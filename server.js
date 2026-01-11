@@ -10,7 +10,28 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(bodyParser.json());
 
-// Ruta para agregar tarea
+// ===============================
+//   RUTA: OBTENER EMPLEADOS
+// ===============================
+app.get("/api/empleados", (req, res) => {
+  const filePath = path.join(__dirname, "data", "empleados.json");
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(500).json({ error: "Archivo empleados.json no encontrado" });
+  }
+
+  try {
+    const data = fs.readFileSync(filePath, "utf8");
+    const empleados = JSON.parse(data);
+    res.json(empleados);
+  } catch (error) {
+    res.status(500).json({ error: "Error leyendo empleados.json" });
+  }
+});
+
+// ===============================
+//   RUTA: AGREGAR TAREA (ADMIN)
+// ===============================
 app.post("/api/admin/agregar-tarea", (req, res) => {
   const { empleadoId, fecha, tarea } = req.body;
 
@@ -46,7 +67,9 @@ app.post("/api/admin/agregar-tarea", (req, res) => {
   res.json({ ok: true });
 });
 
-// Ruta para obtener tareas completas por fecha
+// ===========================================
+//   RUTA: OBTENER TAREAS COMPLETAS POR FECHA
+// ===========================================
 app.get("/api/admin/tareas-completas", (req, res) => {
   const { fecha } = req.query;
 
@@ -81,5 +104,8 @@ app.get("/api/admin/tareas-completas", (req, res) => {
   res.json(resultado);
 });
 
+// ===============================
+//   INICIAR SERVIDOR
+// ===============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
