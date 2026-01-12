@@ -7,6 +7,7 @@
     "C10 – Mantener limpios: máquina de café, máquina de hielo mezclado, máquina McCafé y dispensador de crema.",
     "C11 – Mantener en buen estado: máquina de café, máquina de hielo mezclado, máquina McCafé y dispensador de crema."
   ],
+
   "Cocina y Producción": [
     "C12 – Mantener limpios paredes, pisos, techo, ventilas y luces de cocina, quitar polvo de los filtros de aire.",
     "C13 – Mantener en buen estado paredes, pisos, techo, ventilas y luces de cocina.",
@@ -20,15 +21,8 @@
     "C21-US – Mantener en buen estado los gabinetes UHC.",
     "C22 – Mantener limpios la mesa de armado (OAT) y zonas calientes (HLZ).",
     "C23 – Mantener en buen estado la mesa de armado (OAT) y zonas calientes (HLZ).",
-    "C24 – Mantener limpia el área de preparación.",
-    "C25 – Mantener en buen estado el área de preparación.",
-    "C25-US-01 – Mantener limpios todos los cocedores de huevo.",
-    "C25-US-02 – Mantener en buen estado todos los cocedores de huevo.",
-    "C26 – Mantener limpios tostadores y vaporeras.",
-    "C27 – Mantener en buen estado tostadores y vaporeras.",
-    "C28 – Mantener limpias todas las máquinas de hielo.",
-    "C29 – Mantener en buen estado todas las máquinas de hielo.",
-    "C30-US – Transportar hielo solo con cubetas limpias.",
+    "C24 – Mantener limpie el área de preparación.",
+    "C25 – Mantener en buen estado el área de preparación. Transportar hielo solo con cubetas limpias.",
     "C31 – Mantener limpias las palas de hielo.",
     "C32-US – Mantener limpios utensilios y piezas pequeñas.",
     "C33 – Mantener en buen estado utensilios y piezas pequeñas.",
@@ -36,23 +30,25 @@
     "C35 – Reciclar cartón corrugado.",
     "C36 – Participar en separación de desperdicio."
   ],
+
   "Lobby, Baños y PlayPlace": [
     "C41-US – Mantener limpios kioscos.",
     "C41-US-01 – Mantener limpios localizadores.",
-    "C42 – Mantener limpia el área de bebidas.",
-    "C43-US – Mantener limpios ABS y torres de bebida.",
+    "C42 – Mantener limpio el área de bebidas.",
+    "C43-US – Mantener limpio ABS y torres de bebida.",
     "C44-US – Mantener en buen estado ABS y torres de bebida.",
-    "C45 – Mantener limpios mesas y sillas.",
+    "C45 – Mantener limpio mesas y sillas.",
     "C46 – Mantener en buen estado mesas y sillas.",
-    "C47 – Mantener limpios pisos y paredes.",
+    "C47 – Mantener limpio pisos y paredes.",
     "C48 – Mantener en buen estado pisos y paredes.",
-    "C49 – Mantener limpios botes de basura.",
+    "C49 – Mantener limpio botes de basura.",
     "C50 – Mantener en buen estado botes de basura.",
     "C54-US – Mantener limpios y abastecidos los baños.",
     "C55-US – Mantener en buen estado los baños.",
     "C56-US – Mantener limpio el PlayPlace.",
     "C57-US – Mantener en buen estado el PlayPlace."
   ],
+
   "Áreas Exteriores": [
     "C58 – Mantener limpia la parte exterior.",
     "C59 – Mantener en buen estado la parte exterior.",
@@ -65,7 +61,7 @@
     "C66 – Mantener limpio el menú del drive-thru.",
     "C67 – Mantener en buen estado el menú del drive-thru.",
     "C68-US – Mantener en buen estado equipo POS.",
-    "C69 – Mantener limpia el área del corral.",
+    "C69 – Mantener limpio el área del corral.",
     "C70 – Mantener en buen estado el área del corral.",
     "C71 – Mantener limpios botes de basura exteriores.",
     "C72 – Mantener en buen estado botes de basura exteriores."
