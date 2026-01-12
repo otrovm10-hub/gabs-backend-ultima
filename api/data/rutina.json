@@ -1,0 +1,20 @@
+{
+  "101": {
+    "lunes": ["Limpiar mesas", "Revisar baños"],
+    "martes": ["Trapear cocina", "Sacar basura"],
+    "miercoles": ["Limpiar ventanas"],
+    "jueves": ["Desinfectar área de trabajo"],
+    "viernes": ["Revisar inventario"],
+    "sabado": ["Apoyar en cocina"],
+    "domingo": ["Descanso"]
+  },
+  "102": {
+    "lunes": ["Lavar platos"],
+    "martes": ["Limpiar parrilla"],
+    "miercoles": ["Sacar basura"],
+    "jueves": ["Limpiar baños"],
+    "viernes": ["Desinfectar cocina"],
+    "sabado": ["Revisar refrigeradores"],
+    "domingo": ["Descanso"]
+  }
+}
