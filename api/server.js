@@ -120,6 +120,7 @@ app.get("/admin/historial", (req, res) => {
 
     const historialFormateado = [];
 
+    // historialOriginal = { "101": [ {...}, {...} ], "102": [ ... ] }
     Object.entries(historialOriginal).forEach(([empleadoId, tareas]) => {
       tareas.forEach(t => {
         historialFormateado.push({
