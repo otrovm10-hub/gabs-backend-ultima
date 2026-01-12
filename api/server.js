@@ -104,6 +104,25 @@ app.get("/admin/tareas-completas", (req, res) => {
   res.json(resultado);
 });
 
+// ===========================================
+//   RUTA: OBTENER HISTORIAL COMPLETO
+// ===========================================
+app.get("/admin/historial", (req, res) => {
+  const filePath = path.join(__dirname, "data", "Historial.json");
+
+  if (!fs.existsSync(filePath)) {
+    return res.json([]);
+  }
+
+  try {
+    const data = fs.readFileSync(filePath, "utf8");
+    const historial = JSON.parse(data);
+    res.json(historial);
+  } catch (error) {
+    res.status(500).json({ error: "Error leyendo Historial.json" });
+  }
+});
+
 // ===============================
 //   INICIAR SERVIDOR
 // ===============================
