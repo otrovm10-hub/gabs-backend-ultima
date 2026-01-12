@@ -105,7 +105,7 @@ app.get("/admin/tareas-completas", (req, res) => {
 });
 
 // ===========================================
-//   RUTA: OBTENER HISTORIAL COMPLETO
+//   RUTA: OBTENER HISTORIAL COMPLETO (FORMATO LISTA)
 // ===========================================
 app.get("/admin/historial", (req, res) => {
   const filePath = path.join(__dirname, "data", "Historial.json");
@@ -116,8 +116,26 @@ app.get("/admin/historial", (req, res) => {
 
   try {
     const data = fs.readFileSync(filePath, "utf8");
-    const historial = JSON.parse(data);
-    res.json(historial);
+    const historialOriginal = JSON.parse(data);
+
+    const historialFormateado = [];
+
+    Object.entries(historialOriginal).forEach(([empleadoId, tareas]) => {
+      tareas.forEach(t => {
+        historialFormateado.push({
+          id: empleadoId,
+          nombre: t.nombre || "",
+          tarea: t.tarea,
+          fecha: t.fecha,
+          estado: t.estado,
+          obsEmpleado: t.obsEmpleado || "",
+          obsAdmin: t.obsAdmin || "",
+          motivoNoRealizada: t.motivoNoRealizada || ""
+        });
+      });
+    });
+
+    res.json(historialFormateado);
   } catch (error) {
     res.status(500).json({ error: "Error leyendo Historial.json" });
   }
