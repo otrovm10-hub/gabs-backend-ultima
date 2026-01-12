@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import fs from "fs";
 import path from "path";
 import bodyParser from "body-parser";
@@ -8,6 +9,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// HABILITAR CORS PARA QUE VERCEL PUEDA ACCEDER AL BACKEND
+app.use(cors());
+
 app.use(bodyParser.json());
 
 // ===============================
@@ -102,6 +107,44 @@ app.get("/admin/tareas-completas", (req, res) => {
   });
 
   res.json(resultado);
+});
+
+// ===========================================
+//   RUTA: OBTENER HISTORIAL COMPLETO (FORMATO LISTA)
+// ===========================================
+app.get("/admin/historial", (req, res) => {
+  const filePath = path.join(__dirname, "data", "Historial.json");
+
+  if (!fs.existsSync(filePath)) {
+    return res.json([]);
+  }
+
+  try {
+    const data = fs.readFileSync(filePath, "utf8");
+    const historialOriginal = JSON.parse(data);
+
+    const historialFormateado = [];
+
+    // historialOriginal = { "101": [ {...}, {...} ], "102": [ ... ] }
+    Object.entries(historialOriginal).forEach(([empleadoId, tareas]) => {
+      tareas.forEach(t => {
+        historialFormateado.push({
+          id: empleadoId,
+          nombre: t.nombre || "",
+          tarea: t.tarea,
+          fecha: t.fecha,
+          estado: t.estado,
+          obsEmpleado: t.obsEmpleado || "",
+          obsAdmin: t.obsAdmin || "",
+          motivoNoRealizada: t.motivoNoRealizada || ""
+        });
+      });
+    });
+
+    res.json(historialFormateado);
+  } catch (error) {
+    res.status(500).json({ error: "Error leyendo Historial.json" });
+  }
 });
 
 // ===============================
