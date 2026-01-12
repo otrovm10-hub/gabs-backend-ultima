@@ -113,7 +113,8 @@ app.get("/admin/tareas-completas", (req, res) => {
 //   RUTA: OBTENER HISTORIAL COMPLETO (FORMATO LISTA)
 // ===========================================
 app.get("/admin/historial", (req, res) => {
-  const filePath = path.join(__dirname, "data", "Historial.json");
+  // ⭐ CAMBIO IMPORTANTE: ahora usa Historial2.json
+  const filePath = path.join(__dirname, "data", "Historial2.json");
 
   if (!fs.existsSync(filePath)) {
     return res.json([]);
@@ -143,7 +144,7 @@ app.get("/admin/historial", (req, res) => {
 
     res.json(historialFormateado);
   } catch (error) {
-    res.status(500).json({ error: "Error leyendo Historial.json" });
+    res.status(500).json({ error: "Error leyendo Historial2.json" });
   }
 });
 
