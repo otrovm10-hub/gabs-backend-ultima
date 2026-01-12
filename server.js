@@ -12,12 +12,11 @@ const app = express();
 
 // HABILITAR CORS PARA QUE VERCEL PUEDA ACCEDER AL BACKEND
 app.use(cors());
-
 app.use(bodyParser.json());
 
-// ===============================
-//   RUTA: OBTENER EMPLEADOS
-// ===============================
+/* ============================================================
+   RUTA: OBTENER EMPLEADOS
+============================================================ */
 app.get("/empleados", (req, res) => {
   const filePath = path.join(__dirname, "data", "empleados.json");
 
@@ -34,13 +33,31 @@ app.get("/empleados", (req, res) => {
   }
 });
 
-// ===============================
-//   RUTA: AGREGAR TAREA (ADMIN)
-// ===============================
-app.post("/admin/agregar-tarea", (req, res) => {
-  const { empleadoId, fecha, tarea } = req.body;
+/* ============================================================
+   RUTA: OBTENER CATALOGO DE TAREAS
+============================================================ */
+app.get("/catalogo", (req, res) => {
+  const filePath = path.join(__dirname, "data", "catalogo_tareas.json");
 
-  if (!empleadoId || !fecha || !tarea) {
+  if (!fs.existsSync(filePath)) {
+    return res.json({});
+  }
+
+  try {
+    const data = fs.readFileSync(filePath, "utf8");
+    res.json(JSON.parse(data));
+  } catch {
+    res.json({});
+  }
+});
+
+/* ============================================================
+   RUTA: AGREGAR TAREA (ADMIN)
+============================================================ */
+app.post("/admin/agregar-tarea", (req, res) => {
+  const { id, fecha, tarea } = req.body;
+
+  if (!id || !fecha || !tarea) {
     return res.status(400).json({ error: "Faltan datos" });
   }
 
@@ -56,10 +73,10 @@ app.post("/admin/agregar-tarea", (req, res) => {
     }
   }
 
-  if (!excepciones[empleadoId]) excepciones[empleadoId] = {};
-  if (!excepciones[empleadoId][fecha]) excepciones[empleadoId][fecha] = [];
+  if (!excepciones[id]) excepciones[id] = {};
+  if (!excepciones[id][fecha]) excepciones[id][fecha] = [];
 
-  excepciones[empleadoId][fecha].push({
+  excepciones[id][fecha].push({
     id: Date.now().toString(),
     tarea,
     estado: "pendiente",
@@ -72,9 +89,9 @@ app.post("/admin/agregar-tarea", (req, res) => {
   res.json({ ok: true });
 });
 
-// ===========================================
-//   RUTA: OBTENER TAREAS COMPLETAS POR FECHA
-// ===========================================
+/* ============================================================
+   RUTA: TAREAS COMPLETAS POR FECHA
+============================================================ */
 app.get("/admin/tareas-completas", (req, res) => {
   const { fecha } = req.query;
 
@@ -98,7 +115,8 @@ app.get("/admin/tareas-completas", (req, res) => {
     if (fechas[fecha]) {
       fechas[fecha].forEach(t => {
         resultado.push({
-          empleadoId,
+          id: empleadoId,
+          nombre: "",
           fecha,
           ...t
         });
@@ -109,11 +127,130 @@ app.get("/admin/tareas-completas", (req, res) => {
   res.json(resultado);
 });
 
-// ===========================================
-//   RUTA: OBTENER HISTORIAL COMPLETO (FORMATO LISTA)
-// ===========================================
+/* ============================================================
+   RUTA: APROBAR TAREA
+============================================================ */
+app.post("/admin/aprobar", (req, res) => {
+  const { id, fecha, tarea, observacionAdmin } = req.body;
+
+  const filePath = path.join(__dirname, "data", "Historial2.json");
+
+  let historial = {};
+
+  if (fs.existsSync(filePath)) {
+    historial = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  }
+
+  if (!historial[id]) historial[id] = [];
+
+  historial[id].push({
+    tarea,
+    fecha,
+    estado: "terminada",
+    obsAdmin: observacionAdmin || "",
+    obsEmpleado: "",
+    motivoNoRealizada: ""
+  });
+
+  fs.writeFileSync(filePath, JSON.stringify(historial, null, 2));
+
+  res.json({ ok: true });
+});
+
+/* ============================================================
+   RUTA: DEVOLVER TAREA
+============================================================ */
+app.post("/guardar-estado", (req, res) => {
+  const { empleado, fecha, tarea, estado, motivoNoRealizada } = req.body;
+
+  const filePath = path.join(__dirname, "data", "Historial2.json");
+
+  let historial = {};
+
+  if (fs.existsSync(filePath)) {
+    historial = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  }
+
+  if (!historial[empleado]) historial[empleado] = [];
+
+  historial[empleado].push({
+    tarea,
+    fecha,
+    estado,
+    motivoNoRealizada,
+    obsEmpleado: "",
+    obsAdmin: ""
+  });
+
+  fs.writeFileSync(filePath, JSON.stringify(historial, null, 2));
+
+  res.json({ ok: true });
+});
+
+/* ============================================================
+   RUTA: GUARDAR OBSERVACIÓN ADMIN
+============================================================ */
+app.post("/guardar-observacion-admin", (req, res) => {
+  const { id, fecha, tarea, observacionAdmin } = req.body;
+
+  const filePath = path.join(__dirname, "data", "Historial2.json");
+
+  let historial = {};
+
+  if (fs.existsSync(filePath)) {
+    historial = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  }
+
+  if (!historial[id]) historial[id] = [];
+
+  historial[id].push({
+    tarea,
+    fecha,
+    estado: "observada",
+    obsAdmin: observacionAdmin,
+    obsEmpleado: "",
+    motivoNoRealizada: ""
+  });
+
+  fs.writeFileSync(filePath, JSON.stringify(historial, null, 2));
+
+  res.json({ ok: true });
+});
+
+/* ============================================================
+   RUTA: REPROGRAMAR TAREA
+============================================================ */
+app.post("/admin/reprogramar", (req, res) => {
+  const { id, fecha, tarea, nuevaFecha, observacionAdmin } = req.body;
+
+  const filePath = path.join(__dirname, "data", "Historial2.json");
+
+  let historial = {};
+
+  if (fs.existsSync(filePath)) {
+    historial = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  }
+
+  if (!historial[id]) historial[id] = [];
+
+  historial[id].push({
+    tarea,
+    fecha: nuevaFecha,
+    estado: "reprogramada",
+    obsAdmin: observacionAdmin || "",
+    obsEmpleado: "",
+    motivoNoRealizada: ""
+  });
+
+  fs.writeFileSync(filePath, JSON.stringify(historial, null, 2));
+
+  res.json({ ok: true });
+});
+
+/* ============================================================
+   RUTA: HISTORIAL COMPLETO
+============================================================ */
 app.get("/admin/historial", (req, res) => {
-  // ⭐ CAMBIO IMPORTANTE: ahora usa Historial2.json
   const filePath = path.join(__dirname, "data", "Historial2.json");
 
   if (!fs.existsSync(filePath)) {
@@ -126,7 +263,6 @@ app.get("/admin/historial", (req, res) => {
 
     const historialFormateado = [];
 
-    // historialOriginal = { "101": [ {...}, {...} ], "102": [ ... ] }
     Object.entries(historialOriginal).forEach(([empleadoId, tareas]) => {
       tareas.forEach(t => {
         historialFormateado.push({
@@ -148,8 +284,8 @@ app.get("/admin/historial", (req, res) => {
   }
 });
 
-// ===============================
-//   INICIAR SERVIDOR
-// ===============================
+/* ============================================================
+   INICIAR SERVIDOR
+============================================================ */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
