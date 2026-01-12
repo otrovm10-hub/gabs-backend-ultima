@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import fs from "fs";
 import path from "path";
 import bodyParser from "body-parser";
@@ -8,6 +9,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// HABILITAR CORS PARA QUE VERCEL PUEDA ACCEDER AL BACKEND
+app.use(cors());
+
 app.use(bodyParser.json());
 
 // ===============================
@@ -120,7 +125,6 @@ app.get("/admin/historial", (req, res) => {
 
     const historialFormateado = [];
 
-    // historialOriginal = { "101": [ {...}, {...} ], "102": [ ... ] }
     Object.entries(historialOriginal).forEach(([empleadoId, tareas]) => {
       tareas.forEach(t => {
         historialFormateado.push({
