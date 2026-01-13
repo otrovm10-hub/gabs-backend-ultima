@@ -3,7 +3,7 @@ const fs = require("fs");
 const cors = require("cors");
 const app = express();
 
-app.use(cors()) ;
+app.use(cors());
 app.use(express.json());
 
 /* ============================
@@ -11,11 +11,16 @@ app.use(express.json());
 ============================ */
 const EMPLEADOS_FILE = "./data/empleados.json";
 const CATALOGO_FILE = "./data/catalogo.json";
-const HISTORIAL_FILE = "./data/historial.json";
+const HISTORIAL_FILE = "./data/Historial2.json"; // ← CORREGIDO
 
 function cargarJSON(path) {
-  if (!fs.existsSync(path)) return {};
-  return JSON.parse(fs.readFileSync(path, "utf8"));
+  if (!fs.existsSync(path)) return [];
+  const contenido = fs.readFileSync(path, "utf8");
+  try {
+    return JSON.parse(contenido);
+  } catch (e) {
+    return [];
+  }
 }
 
 function guardarJSON(path, data) {
@@ -60,7 +65,7 @@ app.post("/admin/agregar-tarea", (req, res) => {
 
   historial.push({
     id,
-    nombre: empleados[id]?.nombre || "Desconocido",
+    nombre: empleados[id] || "Desconocido",
     fecha,
     tarea,
     estado: "pendiente",
@@ -171,7 +176,7 @@ app.post("/admin/reprogramar", (req, res) => {
   // Crear nueva tarea
   historial.push({
     id,
-    nombre: empleados[id]?.nombre || "Desconocido",
+    nombre: empleados[id] || "Desconocido",
     fecha: nuevaFecha,
     tarea,
     estado: "pendiente",
