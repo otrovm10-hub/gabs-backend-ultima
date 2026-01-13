@@ -10,8 +10,8 @@ app.use(express.json());
    CARGA DE ARCHIVOS JSON
 ============================ */
 const EMPLEADOS_FILE = "./data/empleados.json";
-const CATALOGO_FILE = "./data/catalogo.json";
-const HISTORIAL_FILE = "./data/Historial2.json"; // ← CORREGIDO
+const CATALOGO_FILE = "./data/catalogo_tareas.json"; // ← CORREGIDO
+const HISTORIAL_FILE = "./data/Historial2.json";     // ← CORREGIDO
 
 function cargarJSON(path) {
   if (!fs.existsSync(path)) return [];
