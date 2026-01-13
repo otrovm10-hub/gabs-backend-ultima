@@ -10,8 +10,8 @@ app.use(express.json());
    CARGA DE ARCHIVOS JSON
 ============================ */
 const EMPLEADOS_FILE = "./data/empleados.json";
-const CATALOGO_FILE = "./data/catalogo_tareas.json"; // ← CORREGIDO
-const HISTORIAL_FILE = "./data/Historial2.json";     // ← CORREGIDO
+const CATALOGO_FILE = "./data/catalogo_tareas.json";
+const HISTORIAL_FILE = "./data/Historial2.json";
 
 function cargarJSON(path) {
   if (!fs.existsSync(path)) return [];
@@ -42,7 +42,7 @@ app.get("/catalogo", (req, res) => {
 });
 
 /* ============================
-   ENDPOINT: TAREAS DEL DÍA
+   ENDPOINT: TAREAS DEL DÍA (empleado)
 ============================ */
 app.get("/tareas-del-dia/:id", (req, res) => {
   const historial = cargarJSON(HISTORIAL_FILE);
@@ -52,6 +52,21 @@ app.get("/tareas-del-dia/:id", (req, res) => {
   const tareas = historial.filter(t => t.id == id && t.fecha === fecha);
 
   res.json({ tareas });
+});
+
+/* ============================
+   ADMIN: TAREAS COMPLETAS POR FECHA
+   (RUTA QUE FALTABA)
+============================ */
+app.get("/admin/tareas-completas", (req, res) => {
+  const fecha = req.query.fecha;
+  if (!fecha) return res.json([]);
+
+  const historial = cargarJSON(HISTORIAL_FILE);
+
+  const tareas = historial.filter(t => t.fecha === fecha);
+
+  res.json(tareas);
 });
 
 /* ============================
