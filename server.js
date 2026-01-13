@@ -1,218 +1,228 @@
-const express = require("express");
-const fs = require("fs");
-const cors = require("cors");
-const app = express();
+// ===============================
+//  IMPORTS
+// ===============================
+import express from "express";
+import fs from "fs";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 
+const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ============================
-   CARGA DE ARCHIVOS JSON
-============================ */
-const EMPLEADOS_FILE = "./data/empleados.json";
-const CATALOGO_FILE = "./data/catalogo_tareas.json";
-const HISTORIAL_FILE = "./data/Historial2.json";
+// ===============================
+//  PATHS
+// ===============================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-function cargarJSON(path) {
-  if (!fs.existsSync(path)) return [];
-  const contenido = fs.readFileSync(path, "utf8");
-  try {
-    return JSON.parse(contenido);
-  } catch (e) {
-    return [];
-  }
+const RUTINAS_PATH = path.join(__dirname, "rutinas.json");
+const EMPLEADOS_PATH = path.join(__dirname, "empleados.json");
+const CATALOGO_PATH = path.join(__dirname, "catalogo.json");
+
+// ===============================
+//  CARGAR ARCHIVOS
+// ===============================
+let rutinas = fs.existsSync(RUTINAS_PATH)
+  ? JSON.parse(fs.readFileSync(RUTINAS_PATH))
+  : {};
+
+let empleados = fs.existsSync(EMPLEADOS_PATH)
+  ? JSON.parse(fs.readFileSync(EMPLEADOS_PATH))
+  : {};
+
+let catalogo = fs.existsSync(CATALOGO_PATH)
+  ? JSON.parse(fs.readFileSync(CATALOGO_PATH))
+  : {};
+
+function guardarRutinas() {
+  fs.writeFileSync(RUTINAS_PATH, JSON.stringify(rutinas, null, 2));
 }
 
-function guardarJSON(path, data) {
-  fs.writeFileSync(path, JSON.stringify(data, null, 2));
-}
+// ===============================
+//  RUTAS BÁSICAS
+// ===============================
+app.get("/", (req, res) => {
+  res.send("Backend funcionando correctamente");
+});
 
-/* ============================
-   ENDPOINT: EMPLEADOS
-============================ */
 app.get("/empleados", (req, res) => {
-  res.json(cargarJSON(EMPLEADOS_FILE));
+  res.json(empleados);
 });
 
-/* ============================
-   ENDPOINT: CATALOGO
-============================ */
 app.get("/catalogo", (req, res) => {
-  res.json(cargarJSON(CATALOGO_FILE));
+  res.json(catalogo);
 });
 
-/* ============================
-   ENDPOINT: TAREAS DEL DÍA (empleado)
-============================ */
+// ===============================
+//  TAREAS DEL EMPLEADO
+// ===============================
 app.get("/tareas-del-dia/:id", (req, res) => {
-  const historial = cargarJSON(HISTORIAL_FILE);
-  const id = req.params.id;
-  const fecha = req.query.fecha;
+  const { id } = req.params;
+  const { fecha } = req.query;
 
-  const tareas = historial.filter(t => t.id == id && t.fecha === fecha);
-
+  const tareas = rutinas[id]?.[fecha] || [];
   res.json({ tareas });
 });
 
-/* ============================
-   ADMIN: TAREAS COMPLETAS POR FECHA
-   (RUTA QUE FALTABA)
-============================ */
-app.get("/admin/tareas-completas", (req, res) => {
-  const fecha = req.query.fecha;
-  if (!fecha) return res.json([]);
-
-  const historial = cargarJSON(HISTORIAL_FILE);
-
-  const tareas = historial.filter(t => t.fecha === fecha);
-
-  res.json(tareas);
-});
-
-/* ============================
-   ADMIN: AGREGAR TAREA
-============================ */
-app.post("/admin/agregar-tarea", (req, res) => {
-  const { id, fecha, tarea } = req.body;
-
-  const historial = cargarJSON(HISTORIAL_FILE);
-  const empleados = cargarJSON(EMPLEADOS_FILE);
-
-  historial.push({
-    id,
-    nombre: empleados[id] || "Desconocido",
-    fecha,
-    tarea,
-    estado: "pendiente",
-    obsEmpleado: "",
-    obsAdmin: ""
-  });
-
-  guardarJSON(HISTORIAL_FILE, historial);
-
-  res.json({ ok: true });
-});
-
-/* ============================
-   ADMIN: APROBAR TAREA
-============================ */
-app.post("/admin/aprobar", (req, res) => {
-  const { id, fecha, tarea, observacionAdmin } = req.body;
-
-  const historial = cargarJSON(HISTORIAL_FILE);
-
-  historial.forEach(t => {
-    if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
-      t.estado = "terminada";
-      t.obsAdmin = observacionAdmin || "";
-    }
-  });
-
-  guardarJSON(HISTORIAL_FILE, historial);
-
-  res.json({ ok: true });
-});
-
-/* ============================
-   GUARDAR ESTADO (empleado)
-============================ */
+// ===============================
+//  GUARDAR ESTADO (CORREGIDO)
+// ===============================
 app.post("/guardar-estado", (req, res) => {
   const { empleado, fecha, tarea, estado, motivoNoRealizada } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  if (!rutinas[empleado]) rutinas[empleado] = {};
+  if (!rutinas[empleado][fecha]) rutinas[empleado][fecha] = [];
 
-  historial.forEach(t => {
-    if (t.id == empleado && t.fecha === fecha && t.tarea === tarea) {
-      t.estado = estado;
-      if (motivoNoRealizada) t.motivoNoRealizada = motivoNoRealizada;
-    }
-  });
+  const t = rutinas[empleado][fecha].find(x => x.tarea === tarea);
 
-  guardarJSON(HISTORIAL_FILE, historial);
+  if (!t) {
+    return res.json({ ok: false, msg: "Tarea no encontrada" });
+  }
 
+  t.estado = estado;
+
+  if (estado === "no_realizada") {
+    t.motivoNoRealizada = motivoNoRealizada || "";
+  }
+
+  // ⭐ IMPORTANTE: marcar para revisión del admin
+  t.revisarAdmin = true;
+
+  guardarRutinas();
   res.json({ ok: true });
 });
 
-/* ============================
-   GUARDAR OBSERVACIÓN EMPLEADO
-============================ */
-app.post("/guardar-observacion", (req, res) => {
-  const { empleado, fecha, tarea, observacion } = req.body;
+// ===============================
+//  ADMIN: TAREAS COMPLETAS
+// ===============================
+app.get("/admin/tareas-completas", (req, res) => {
+  const { fecha } = req.query;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  let lista = [];
 
-  historial.forEach(t => {
-    if (t.id == empleado && t.fecha === fecha && t.tarea === tarea) {
-      t.obsEmpleado = observacion;
+  Object.entries(rutinas).forEach(([id, dias]) => {
+    if (dias[fecha]) {
+      dias[fecha].forEach(t => {
+        lista.push({
+          id,
+          fecha,
+          tarea: t.tarea,
+          estado: t.estado,
+          obsEmpleado: t.observacion || "",
+          obsAdmin: t.obsAdmin || "",
+          motivoNoRealizada: t.motivoNoRealizada || "",
+          revisarAdmin: t.revisarAdmin || false
+        });
+      });
     }
   });
 
-  guardarJSON(HISTORIAL_FILE, historial);
+  res.json(lista);
+});
 
+// ===============================
+//  ADMIN: AGREGAR TAREA
+// ===============================
+app.post("/admin/agregar-tarea", (req, res) => {
+  const { id, fecha, tarea } = req.body;
+
+  if (!rutinas[id]) rutinas[id] = {};
+  if (!rutinas[id][fecha]) rutinas[id][fecha] = [];
+
+  rutinas[id][fecha].push({
+    tarea,
+    estado: "pendiente",
+    revisarAdmin: false
+  });
+
+  guardarRutinas();
   res.json({ ok: true });
 });
 
-/* ============================
-   GUARDAR OBSERVACIÓN ADMIN
-============================ */
+// ===============================
+//  ADMIN: APROBAR TAREA (CORREGIDO)
+// ===============================
+app.post("/admin/aprobar", (req, res) => {
+  const { id, fecha, tarea, observacionAdmin } = req.body;
+
+  const t = rutinas[id][fecha].find(x => x.tarea === tarea);
+  if (!t) return res.json({ ok: false });
+
+  t.estado = "terminada";
+  t.obsAdmin = observacionAdmin || "";
+  t.revisarAdmin = false; // ⭐ YA NO APARECE EN EL PANEL
+
+  guardarRutinas();
+  res.json({ ok: true });
+});
+
+// ===============================
+//  ADMIN: DEVOLVER TAREA
+// ===============================
+app.post("/guardar-estado-admin", (req, res) => {
+  const { id, fecha, tarea, motivo } = req.body;
+
+  const t = rutinas[id][fecha].find(x => x.tarea === tarea);
+  if (!t) return res.json({ ok: false });
+
+  t.estado = "no_realizada";
+  t.motivoNoRealizada = motivo || "";
+  t.revisarAdmin = true;
+
+  guardarRutinas();
+  res.json({ ok: true });
+});
+
+// ===============================
+//  ADMIN: OBSERVACIÓN
+// ===============================
 app.post("/guardar-observacion-admin", (req, res) => {
   const { id, fecha, tarea, observacionAdmin } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  const t = rutinas[id][fecha].find(x => x.tarea === tarea);
+  if (!t) return res.json({ ok: false });
 
-  historial.forEach(t => {
-    if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
-      t.obsAdmin = observacionAdmin;
-    }
-  });
+  t.obsAdmin = observacionAdmin;
+  t.revisarAdmin = true;
 
-  guardarJSON(HISTORIAL_FILE, historial);
-
+  guardarRutinas();
   res.json({ ok: true });
 });
 
-/* ============================
-   ADMIN: REPROGRAMAR TAREA
-============================ */
+// ===============================
+//  ADMIN: REPROGRAMAR
+// ===============================
 app.post("/admin/reprogramar", (req, res) => {
   const { id, fecha, tarea, nuevaFecha, observacionAdmin } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
-  const empleados = cargarJSON(EMPLEADOS_FILE);
+  const tareasDia = rutinas[id][fecha];
+  const t = tareasDia.find(x => x.tarea === tarea);
 
-  // Marcar la original como no realizada
-  historial.forEach(t => {
-    if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
-      t.estado = "no_realizada";
-      t.obsAdmin = observacionAdmin || "";
-    }
-  });
+  if (!t) return res.json({ ok: false });
 
-  // Crear nueva tarea
-  historial.push({
-    id,
-    nombre: empleados[id] || "Desconocido",
-    fecha: nuevaFecha,
+  // Eliminar de la fecha actual
+  rutinas[id][fecha] = tareasDia.filter(x => x.tarea !== tarea);
+
+  // Crear en la nueva fecha
+  if (!rutinas[id][nuevaFecha]) rutinas[id][nuevaFecha] = [];
+
+  rutinas[id][nuevaFecha].push({
     tarea,
     estado: "pendiente",
-    obsEmpleado: "",
-    obsAdmin: ""
+    obsAdmin: observacionAdmin || "",
+    revisarAdmin: true
   });
 
-  guardarJSON(HISTORIAL_FILE, historial);
-
+  guardarRutinas();
   res.json({ ok: true });
 });
 
-/* ============================
-   ADMIN: HISTORIAL COMPLETO
-============================ */
-app.get("/admin/historial", (req, res) => {
-  res.json(cargarJSON(HISTORIAL_FILE));
-});
-
-/* ============================
-   INICIAR SERVIDOR
-============================ */
+// ===============================
+//  SERVIDOR
+// ===============================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Servidor corriendo en puerto " + PORT));
+app.listen(PORT, () => {
+  console.log("Servidor corriendo en puerto " + PORT);
+});
