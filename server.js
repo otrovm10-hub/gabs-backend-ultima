@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ============================
-   CARGA DE ARCHIVOS JSON
+   ARCHIVOS JSON
 ============================ */
 const EMPLEADOS_FILE = "./data/empleados.json";
 const CATALOGO_FILE = "./data/catalogo_tareas.json";
@@ -28,7 +28,46 @@ function guardarJSON(path, data) {
 }
 
 /* ============================
-   ENDPOINT: EMPLEADOS
+   USUARIOS (LOGIN)
+   - usuario + clave + id
+============================ */
+const USUARIOS = [
+  { id: "101", usuario: "jimmy", clave: "1234" },
+  { id: "102", usuario: "lazaro", clave: "1234" },
+  { id: "103", usuario: "william", clave: "1234" },
+  { id: "104", usuario: "mary", clave: "1234" }
+];
+
+/* ============================
+   ENDPOINT: LOGIN
+============================ */
+app.post("/login", (req, res) => {
+  const { usuario, clave } = req.body;
+  if (!usuario || !clave) {
+    return res.status(400).json({ ok: false, mensaje: "Faltan datos" });
+  }
+
+  const empleados = cargarJSON(EMPLEADOS_FILE); // { "101": "Jimmy", ... }
+
+  const u = USUARIOS.find(
+    x => x.usuario === usuario && x.clave === clave
+  );
+
+  if (!u) {
+    return res.status(401).json({ ok: false, mensaje: "Usuario o clave incorrectos" });
+  }
+
+  const nombre = empleados[u.id] || "Empleado";
+
+  res.json({
+    ok: true,
+    id: u.id,
+    nombre
+  });
+});
+
+/* ============================
+   ENDPOINT: EMPLEADOS (crudo)
 ============================ */
 app.get("/empleados", (req, res) => {
   res.json(cargarJSON(EMPLEADOS_FILE));
@@ -42,7 +81,7 @@ app.get("/catalogo", (req, res) => {
 });
 
 /* ============================
-   ENDPOINT: TAREAS DEL DÍA (empleado)
+   TAREAS DEL DÍA (empleado)
 ============================ */
 app.get("/tareas-del-dia/:id", (req, res) => {
   const historial = cargarJSON(HISTORIAL_FILE);
@@ -84,7 +123,8 @@ app.post("/admin/agregar-tarea", (req, res) => {
     tarea,
     estado: "pendiente",
     obsEmpleado: "",
-    obsAdmin: ""
+    obsAdmin: "",
+    motivoNoRealizada: ""
   });
 
   guardarJSON(HISTORIAL_FILE, historial);
@@ -93,7 +133,7 @@ app.post("/admin/agregar-tarea", (req, res) => {
 });
 
 /* ============================
-   ADMIN: APROBAR TAREA (CORREGIDO)
+   ADMIN: APROBAR TAREA
 ============================ */
 app.post("/admin/aprobar", (req, res) => {
   const { id, fecha, tarea, observacionAdmin } = req.body;
@@ -102,7 +142,7 @@ app.post("/admin/aprobar", (req, res) => {
 
   historial.forEach(t => {
     if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
-      t.estado = "terminada";     // ⭐ YA NO APARECE EN EL PANEL DEL ADMIN
+      t.estado = "terminada";
       t.obsAdmin = observacionAdmin || "";
     }
   });
@@ -113,7 +153,29 @@ app.post("/admin/aprobar", (req, res) => {
 });
 
 /* ============================
-   GUARDAR ESTADO (empleado) — CORREGIDO
+   ADMIN: DEVOLVER TAREA
+   - cambia estado a "devuelto"
+   - guarda motivoNoRealizada
+============================ */
+app.post("/admin/devolver", (req, res) => {
+  const { id, fecha, tarea, motivo } = req.body;
+
+  const historial = cargarJSON(HISTORIAL_FILE);
+
+  historial.forEach(t => {
+    if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
+      t.estado = "devuelto";
+      t.motivoNoRealizada = motivo || "";
+    }
+  });
+
+  guardarJSON(HISTORIAL_FILE, historial);
+
+  res.json({ ok: true });
+});
+
+/* ============================
+   GUARDAR ESTADO (empleado)
 ============================ */
 app.post("/guardar-estado", (req, res) => {
   const { empleado, fecha, tarea, estado, motivoNoRealizada } = req.body;
@@ -123,9 +185,8 @@ app.post("/guardar-estado", (req, res) => {
   historial.forEach(t => {
     if (t.id == empleado && t.fecha === fecha && t.tarea === tarea) {
 
-      // ⭐ Cuando el empleado marca terminada o no realizada
       if (estado === "terminada" || estado === "no_realizada") {
-        t.estado = "en_revision";   // ⭐ AHORA EL ADMIN LA VE
+        t.estado = "en_revision";
       } else {
         t.estado = estado;
       }
@@ -188,7 +249,6 @@ app.post("/admin/reprogramar", (req, res) => {
   const historial = cargarJSON(HISTORIAL_FILE);
   const empleados = cargarJSON(EMPLEADOS_FILE);
 
-  // Marcar la original como no realizada
   historial.forEach(t => {
     if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
       t.estado = "no_realizada";
@@ -196,7 +256,6 @@ app.post("/admin/reprogramar", (req, res) => {
     }
   });
 
-  // Crear nueva tarea
   historial.push({
     id,
     nombre: empleados[id] || "Desconocido",
@@ -204,7 +263,8 @@ app.post("/admin/reprogramar", (req, res) => {
     tarea,
     estado: "pendiente",
     obsEmpleado: "",
-    obsAdmin: ""
+    obsAdmin: "",
+    motivoNoRealizada: ""
   });
 
   guardarJSON(HISTORIAL_FILE, historial);
