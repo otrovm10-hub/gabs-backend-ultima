@@ -1,30 +1,36 @@
 const express = require("express");
 const fs = require("fs");
 const cors = require("cors");
+const path = require("path");
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
 /* ============================
-   ARCHIVOS JSON
+   ARCHIVOS JSON (RUTAS FIJAS)
 ============================ */
-const EMPLEADOS_FILE = "./data/empleados.json";
-const CATALOGO_FILE = "./data/catalogo_tareas.json";
-const HISTORIAL_FILE = "./data/Historial2.json";
+const EMPLEADOS_FILE = path.join(__dirname, "data", "empleados.json");
+const CATALOGO_FILE = path.join(__dirname, "data", "catalogo_tareas.json");
+const HISTORIAL_FILE = path.join(__dirname, "data", "Historial2.json");
 
-function cargarJSON(path) {
-  if (!fs.existsSync(path)) return [];
-  const contenido = fs.readFileSync(path, "utf8");
+function cargarJSON(pathFile) {
   try {
-    return JSON.parse(contenido);
+    if (!fs.existsSync(pathFile)) return [];
+    const contenido = fs.readFileSync(pathFile, "utf8");
+    return JSON.parse(contenido || "[]");
   } catch (e) {
+    console.error("Error leyendo JSON:", pathFile, e);
     return [];
   }
 }
 
-function guardarJSON(path, data) {
-  fs.writeFileSync(path, JSON.stringify(data, null, 2));
+function guardarJSON(pathFile, data) {
+  try {
+    fs.writeFileSync(pathFile, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error("Error guardando JSON:", pathFile, e);
+  }
 }
 
 /* ============================
@@ -174,7 +180,6 @@ app.post("/admin/devolver", (req, res) => {
 
 /* ============================
    EMPLEADO: GUARDAR ESTADO
-   ⭐ CORREGIDO: YA NO ROMPE "devuelto"
 ============================ */
 app.post("/guardar-estado", (req, res) => {
   const { empleado, fecha, tarea, estado, motivoNoRealizada } = req.body;
