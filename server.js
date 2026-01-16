@@ -1,37 +1,18 @@
 const express = require("express");
-const fs = require("fs");
 const cors = require("cors");
-const path = require("path");
-const app = express();
+const { createClient } = require("@supabase/supabase-js");
 
+const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ============================
-   ARCHIVOS JSON (RUTAS FIJAS)
-============================ */
-const EMPLEADOS_FILE = path.join(__dirname, "data", "empleados.json");
-const CATALOGO_FILE = path.join(__dirname, "data", "catalogo_tareas.json");
-const HISTORIAL_FILE = path.join(__dirname, "data", "Historial2.json");
-
-function cargarJSON(pathFile) {
-  try {
-    if (!fs.existsSync(pathFile)) return [];
-    const contenido = fs.readFileSync(pathFile, "utf8");
-    return JSON.parse(contenido || "[]");
-  } catch (e) {
-    console.error("Error leyendo JSON:", pathFile, e);
-    return [];
-  }
-}
-
-function guardarJSON(pathFile, data) {
-  try {
-    fs.writeFileSync(pathFile, JSON.stringify(data, null, 2));
-  } catch (e) {
-    console.error("Error guardando JSON:", pathFile, e);
-  }
-}
+// ============================
+//   CONEXIÓN A SUPABASE
+// ============================
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
 /* ============================
    USUARIOS (LOGIN ORIGINAL)
@@ -46,14 +27,12 @@ const USUARIOS = [
 /* ============================
    LOGIN
 ============================ */
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { usuario, clave } = req.body;
 
   if (!usuario || !clave) {
     return res.status(400).json({ ok: false, mensaje: "Faltan datos" });
   }
-
-  const empleados = cargarJSON(EMPLEADOS_FILE);
 
   const u = USUARIOS.find(
     x => x.usuario === usuario && x.clave === clave
@@ -63,77 +42,100 @@ app.post("/login", (req, res) => {
     return res.status(401).json({ ok: false, mensaje: "Usuario o clave incorrectos" });
   }
 
-  const nombre = empleados[u.id] || "Empleado";
+  // Buscar nombre en Supabase
+  const { data: empleado } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", u.id)
+    .single();
 
   res.json({
     ok: true,
     id: u.id,
-    nombre
+    nombre: empleado?.name || "Empleado"
   });
 });
 
 /* ============================
    EMPLEADOS
 ============================ */
-app.get("/empleados", (req, res) => {
-  res.json(cargarJSON(EMPLEADOS_FILE));
+app.get("/empleados", async (req, res) => {
+  const { data, error } = await supabase.from("employees").select("*");
+  if (error) return res.status(400).json(error);
+  res.json(data);
 });
 
 /* ============================
    CATALOGO
 ============================ */
-app.get("/catalogo", (req, res) => {
-  res.json(cargarJSON(CATALOGO_FILE));
+app.get("/catalogo", async (req, res) => {
+  const { data, error } = await supabase.from("catalogo").select("*");
+  if (error) return res.status(400).json(error);
+  res.json(data);
 });
 
 /* ============================
    TAREAS DEL DÍA (empleado)
 ============================ */
-app.get("/tareas-del-dia/:id", (req, res) => {
-  const historial = cargarJSON(HISTORIAL_FILE);
+app.get("/tareas-del-dia/:id", async (req, res) => {
   const id = req.params.id;
   const fecha = req.query.fecha;
 
-  const tareas = historial.filter(t => t.id == id && t.fecha === fecha);
+  const { data, error } = await supabase
+    .from("historial")
+    .select("*")
+    .eq("id", id)
+    .eq("fecha", fecha);
 
-  res.json({ tareas });
+  if (error) return res.status(400).json(error);
+
+  res.json({ tareas: data });
 });
 
 /* ============================
    ADMIN: TAREAS POR FECHA
 ============================ */
-app.get("/admin/tareas-completas", (req, res) => {
+app.get("/admin/tareas-completas", async (req, res) => {
   const fecha = req.query.fecha;
   if (!fecha) return res.json([]);
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  const { data, error } = await supabase
+    .from("historial")
+    .select("*")
+    .eq("fecha", fecha);
 
-  const tareas = historial.filter(t => t.fecha === fecha);
+  if (error) return res.status(400).json(error);
 
-  res.json(tareas);
+  res.json(data);
 });
 
 /* ============================
    ADMIN: AGREGAR TAREA
 ============================ */
-app.post("/admin/agregar-tarea", (req, res) => {
+app.post("/admin/agregar-tarea", async (req, res) => {
   const { id, fecha, tarea } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
-  const empleados = cargarJSON(EMPLEADOS_FILE);
+  // Obtener nombre del empleado
+  const { data: empleado } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", id)
+    .single();
 
-  historial.push({
-    id,
-    nombre: empleados[id] || "Desconocido",
-    fecha,
-    tarea,
-    estado: "pendiente",
-    obsEmpleado: "",
-    obsAdmin: "",
-    motivoNoRealizada: ""
-  });
+  const { error } = await supabase.from("historial").insert([
+    {
+      id,
+      nombre: empleado?.name || "Desconocido",
+      fecha,
+      tarea,
+      estado: "pendiente",
+      obsEmpleado: "",
+      obsAdmin: "",
+      motivoNoRealizada: ""
+    }
+  ]);
 
-  guardarJSON(HISTORIAL_FILE, historial);
+  if (error) return res.status(400).json(error);
 
   res.json({ ok: true });
 });
@@ -141,19 +143,20 @@ app.post("/admin/agregar-tarea", (req, res) => {
 /* ============================
    ADMIN: APROBAR
 ============================ */
-app.post("/admin/aprobar", (req, res) => {
+app.post("/admin/aprobar", async (req, res) => {
   const { id, fecha, tarea, observacionAdmin } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  const { error } = await supabase
+    .from("historial")
+    .update({
+      estado: "terminada",
+      obsAdmin: observacionAdmin || ""
+    })
+    .eq("id", id)
+    .eq("fecha", fecha)
+    .eq("tarea", tarea);
 
-  historial.forEach(t => {
-    if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
-      t.estado = "terminada";
-      t.obsAdmin = observacionAdmin || "";
-    }
-  });
-
-  guardarJSON(HISTORIAL_FILE, historial);
+  if (error) return res.status(400).json(error);
 
   res.json({ ok: true });
 });
@@ -161,19 +164,20 @@ app.post("/admin/aprobar", (req, res) => {
 /* ============================
    ADMIN: DEVOLVER
 ============================ */
-app.post("/admin/devolver", (req, res) => {
+app.post("/admin/devolver", async (req, res) => {
   const { id, fecha, tarea, motivo } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  const { error } = await supabase
+    .from("historial")
+    .update({
+      estado: "devuelto",
+      motivoNoRealizada: motivo || ""
+    })
+    .eq("id", id)
+    .eq("fecha", fecha)
+    .eq("tarea", tarea);
 
-  historial.forEach(t => {
-    if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
-      t.estado = "devuelto";
-      t.motivoNoRealizada = motivo || "";
-    }
-  });
-
-  guardarJSON(HISTORIAL_FILE, historial);
+  if (error) return res.status(400).json(error);
 
   res.json({ ok: true });
 });
@@ -181,30 +185,26 @@ app.post("/admin/devolver", (req, res) => {
 /* ============================
    EMPLEADO: GUARDAR ESTADO
 ============================ */
-app.post("/guardar-estado", (req, res) => {
+app.post("/guardar-estado", async (req, res) => {
   const { empleado, fecha, tarea, estado, motivoNoRealizada } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  let nuevoEstado = estado;
 
-  historial.forEach(t => {
-    if (t.id == empleado && t.fecha === fecha && t.tarea === tarea) {
+  if (estado === "terminada" || estado === "no_realizada") {
+    nuevoEstado = "en_revision";
+  }
 
-      if (estado === "terminada") {
-        t.estado = "en_revision";
-      }
+  const { error } = await supabase
+    .from("historial")
+    .update({
+      estado: nuevoEstado,
+      motivoNoRealizada: motivoNoRealizada || ""
+    })
+    .eq("id", empleado)
+    .eq("fecha", fecha)
+    .eq("tarea", tarea);
 
-      else if (estado === "no_realizada") {
-        t.estado = "en_revision";
-        t.motivoNoRealizada = motivoNoRealizada || "";
-      }
-
-      else {
-        t.estado = estado;
-      }
-    }
-  });
-
-  guardarJSON(HISTORIAL_FILE, historial);
+  if (error) return res.status(400).json(error);
 
   res.json({ ok: true });
 });
@@ -212,18 +212,17 @@ app.post("/guardar-estado", (req, res) => {
 /* ============================
    OBS EMPLEADO
 ============================ */
-app.post("/guardar-observacion", (req, res) => {
+app.post("/guardar-observacion", async (req, res) => {
   const { empleado, fecha, tarea, observacion } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  const { error } = await supabase
+    .from("historial")
+    .update({ obsEmpleado: observacion })
+    .eq("id", empleado)
+    .eq("fecha", fecha)
+    .eq("tarea", tarea);
 
-  historial.forEach(t => {
-    if (t.id == empleado && t.fecha === fecha && t.tarea === tarea) {
-      t.obsEmpleado = observacion;
-    }
-  });
-
-  guardarJSON(HISTORIAL_FILE, historial);
+  if (error) return res.status(400).json(error);
 
   res.json({ ok: true });
 });
@@ -231,18 +230,17 @@ app.post("/guardar-observacion", (req, res) => {
 /* ============================
    OBS ADMIN
 ============================ */
-app.post("/guardar-observacion-admin", (req, res) => {
+app.post("/guardar-observacion-admin", async (req, res) => {
   const { id, fecha, tarea, observacionAdmin } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
+  const { error } = await supabase
+    .from("historial")
+    .update({ obsAdmin: observacionAdmin })
+    .eq("id", id)
+    .eq("fecha", fecha)
+    .eq("tarea", tarea);
 
-  historial.forEach(t => {
-    if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
-      t.obsAdmin = observacionAdmin;
-    }
-  });
-
-  guardarJSON(HISTORIAL_FILE, historial);
+  if (error) return res.status(400).json(error);
 
   res.json({ ok: true });
 });
@@ -250,31 +248,42 @@ app.post("/guardar-observacion-admin", (req, res) => {
 /* ============================
    ADMIN: REPROGRAMAR
 ============================ */
-app.post("/admin/reprogramar", (req, res) => {
+app.post("/admin/reprogramar", async (req, res) => {
   const { id, fecha, tarea, nuevaFecha, observacionAdmin } = req.body;
 
-  const historial = cargarJSON(HISTORIAL_FILE);
-  const empleados = cargarJSON(EMPLEADOS_FILE);
+  // Marcar tarea actual como no realizada
+  await supabase
+    .from("historial")
+    .update({
+      estado: "no_realizada",
+      obsAdmin: observacionAdmin || ""
+    })
+    .eq("id", id)
+    .eq("fecha", fecha)
+    .eq("tarea", tarea);
 
-  historial.forEach(t => {
-    if (t.id == id && t.fecha === fecha && t.tarea === tarea) {
-      t.estado = "no_realizada";
-      t.obsAdmin = observacionAdmin || "";
+  // Obtener nombre del empleado
+  const { data: empleado } = await supabase
+    .from("employees")
+    .select("name")
+    .eq("id", id)
+    .single();
+
+  // Crear nueva tarea
+  const { error } = await supabase.from("historial").insert([
+    {
+      id,
+      nombre: empleado?.name || "Desconocido",
+      fecha: nuevaFecha,
+      tarea,
+      estado: "pendiente",
+      obsEmpleado: "",
+      obsAdmin: "",
+      motivoNoRealizada: ""
     }
-  });
+  ]);
 
-  historial.push({
-    id,
-    nombre: empleados[id] || "Desconocido",
-    fecha: nuevaFecha,
-    tarea,
-    estado: "pendiente",
-    obsEmpleado: "",
-    obsAdmin: "",
-    motivoNoRealizada: ""
-  });
-
-  guardarJSON(HISTORIAL_FILE, historial);
+  if (error) return res.status(400).json(error);
 
   res.json({ ok: true });
 });
@@ -282,8 +291,10 @@ app.post("/admin/reprogramar", (req, res) => {
 /* ============================
    HISTORIAL COMPLETO
 ============================ */
-app.get("/admin/historial", (req, res) => {
-  res.json(cargarJSON(HISTORIAL_FILE));
+app.get("/admin/historial", async (req, res) => {
+  const { data, error } = await supabase.from("historial").select("*");
+  if (error) return res.status(400).json(error);
+  res.json(data);
 });
 
 /* ============================
