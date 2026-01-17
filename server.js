@@ -15,7 +15,7 @@ const supabase = createClient(
 );
 
 /* ============================
-   USUARIOS (LOGIN ORIGINAL)
+   USUARIOS (LOGIN)
 ============================ */
 const USUARIOS = [
   { id: "101", usuario: "jimmy", clave: "1234" },
@@ -59,22 +59,28 @@ app.post("/login", async (req, res) => {
    EMPLEADOS
 ============================ */
 app.get("/empleados", async (req, res) => {
-  const { data, error } = await supabase.from("employees").select("*");
+  const { data, error } = await supabase.from("employees").select("id, name");
   if (error) return res.status(400).json(error);
   res.json(data);
 });
 
 /* ============================
-   CATALOGO (MODIFICADO)
+   CATALOGO (AJUSTADO A TU TABLA)
 ============================ */
 app.get("/catalogo", async (req, res) => {
-  const { data, error } = await supabase.from("catalogo").select("*");
+  const { data, error } = await supabase
+    .from("catalogo")
+    .select("categoria, descripcion");
+
   if (error) return res.status(400).json(error);
 
   const agrupado = {};
+
   data.forEach(item => {
+    if (!item.categoria || !item.descripcion) return;
+
     if (!agrupado[item.categoria]) agrupado[item.categoria] = [];
-    agrupado[item.categoria].push(item.tarea);
+    agrupado[item.categoria].push(item.descripcion);
   });
 
   res.json(agrupado);
