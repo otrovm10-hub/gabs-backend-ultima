@@ -42,7 +42,6 @@ app.post("/login", async (req, res) => {
     return res.status(401).json({ ok: false, mensaje: "Usuario o clave incorrectos" });
   }
 
-  // Buscar nombre en Supabase
   const { data: empleado } = await supabase
     .from("employees")
     .select("name")
@@ -66,12 +65,19 @@ app.get("/empleados", async (req, res) => {
 });
 
 /* ============================
-   CATALOGO
+   CATALOGO (MODIFICADO)
 ============================ */
 app.get("/catalogo", async (req, res) => {
   const { data, error } = await supabase.from("catalogo").select("*");
   if (error) return res.status(400).json(error);
-  res.json(data);
+
+  const agrupado = {};
+  data.forEach(item => {
+    if (!agrupado[item.categoria]) agrupado[item.categoria] = [];
+    agrupado[item.categoria].push(item.tarea);
+  });
+
+  res.json(agrupado);
 });
 
 /* ============================
@@ -115,7 +121,6 @@ app.get("/admin/tareas-completas", async (req, res) => {
 app.post("/admin/agregar-tarea", async (req, res) => {
   const { id, fecha, tarea } = req.body;
 
-  // Obtener nombre del empleado
   const { data: empleado } = await supabase
     .from("employees")
     .select("name")
@@ -189,7 +194,6 @@ app.post("/guardar-estado", async (req, res) => {
   const { empleado, fecha, tarea, estado, motivoNoRealizada } = req.body;
 
   let nuevoEstado = estado;
-
   if (estado === "terminada" || estado === "no_realizada") {
     nuevoEstado = "en_revision";
   }
@@ -251,7 +255,6 @@ app.post("/guardar-observacion-admin", async (req, res) => {
 app.post("/admin/reprogramar", async (req, res) => {
   const { id, fecha, tarea, nuevaFecha, observacionAdmin } = req.body;
 
-  // Marcar tarea actual como no realizada
   await supabase
     .from("historial")
     .update({
@@ -262,14 +265,12 @@ app.post("/admin/reprogramar", async (req, res) => {
     .eq("fecha", fecha)
     .eq("tarea", tarea);
 
-  // Obtener nombre del empleado
   const { data: empleado } = await supabase
     .from("employees")
     .select("name")
     .eq("id", id)
     .single();
 
-  // Crear nueva tarea
   const { error } = await supabase.from("historial").insert([
     {
       id,
