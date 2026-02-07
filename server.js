@@ -14,19 +14,19 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
-/* ============================
-   USUARIOS (LOGIN)
-============================ */
+// ============================
+//   USUARIOS (LOGIN LOCAL)
+// ============================
 const USUARIOS = [
-  { id: "101", usuario: "jimmy", clave: "1234" },
-  { id: "102", usuario: "lazaro", clave: "1234" },
-  { id: "103", usuario: "william", clave: "1234" },
-  { id: "104", usuario: "mary", clave: "1234" }
+  { id: "101", usuario: "jimmy", clave: "101" },
+  { id: "102", usuario: "lazaro", clave: "102" },
+  { id: "103", usuario: "william", clave: "103" },
+  { id: "104", usuario: "mary", clave: "104" }
 ];
 
-/* ============================
-   LOGIN
-============================ */
+// ============================
+//   LOGIN
+// ============================
 app.post("/login", async (req, res) => {
   const { usuario, clave } = req.body;
 
@@ -55,18 +55,18 @@ app.post("/login", async (req, res) => {
   });
 });
 
-/* ============================
-   EMPLEADOS
-============================ */
+// ============================
+//   EMPLEADOS
+// ============================
 app.get("/empleados", async (req, res) => {
   const { data, error } = await supabase.from("employees").select("id, name");
   if (error) return res.status(400).json(error);
   res.json(data);
 });
 
-/* ============================
-   CATALOGO (AJUSTADO A TU TABLA)
-============================ */
+// ============================
+//   CATALOGO
+// ============================
 app.get("/catalogo", async (req, res) => {
   const { data, error } = await supabase
     .from("catalogo")
@@ -86,9 +86,9 @@ app.get("/catalogo", async (req, res) => {
   res.json(agrupado);
 });
 
-/* ============================
-   TAREAS DEL DÍA (empleado)
-============================ */
+// ============================
+//   TAREAS DEL DÍA (EMPLEADO)
+// ============================
 app.get("/tareas-del-dia/:id", async (req, res) => {
   const id = req.params.id;
   const fecha = req.query.fecha;
@@ -104,9 +104,9 @@ app.get("/tareas-del-dia/:id", async (req, res) => {
   res.json({ tareas: data });
 });
 
-/* ============================
-   ADMIN: TAREAS POR FECHA
-============================ */
+// ============================
+//   ADMIN: TAREAS COMPLETAS
+// ============================
 app.get("/admin/tareas-completas", async (req, res) => {
   const fecha = req.query.fecha;
   if (!fecha) return res.json([]);
@@ -121,9 +121,9 @@ app.get("/admin/tareas-completas", async (req, res) => {
   res.json(data);
 });
 
-/* ============================
-   ADMIN: AGREGAR TAREA
-============================ */
+// ============================
+//   ADMIN: AGREGAR TAREA
+// ============================
 app.post("/admin/agregar-tarea", async (req, res) => {
   const { id, fecha, tarea } = req.body;
 
@@ -142,7 +142,9 @@ app.post("/admin/agregar-tarea", async (req, res) => {
       estado: "pendiente",
       obsEmpleado: "",
       obsAdmin: "",
-      motivoNoRealizada: ""
+      motivoNoRealizada: "",
+      fotoAntes: "",
+      fotoDespues: ""
     }
   ]);
 
@@ -151,16 +153,16 @@ app.post("/admin/agregar-tarea", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ============================
-   ADMIN: APROBAR
-============================ */
+// ============================
+//   ADMIN: APROBAR
+// ============================
 app.post("/admin/aprobar", async (req, res) => {
   const { id, fecha, tarea, observacionAdmin } = req.body;
 
   const { error } = await supabase
     .from("historial")
     .update({
-      estado: "terminada",
+      estado: "aprobada",
       obsAdmin: observacionAdmin || ""
     })
     .eq("id", id)
@@ -172,9 +174,9 @@ app.post("/admin/aprobar", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ============================
-   ADMIN: DEVOLVER
-============================ */
+// ============================
+//   ADMIN: DEVOLVER
+// ============================
 app.post("/admin/devolver", async (req, res) => {
   const { id, fecha, tarea, motivo } = req.body;
 
@@ -193,21 +195,16 @@ app.post("/admin/devolver", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ============================
-   EMPLEADO: GUARDAR ESTADO
-============================ */
+// ============================
+//   EMPLEADO: GUARDAR ESTADO
+// ============================
 app.post("/guardar-estado", async (req, res) => {
   const { empleado, fecha, tarea, estado, motivoNoRealizada } = req.body;
-
-  let nuevoEstado = estado;
-  if (estado === "terminada" || estado === "no_realizada") {
-    nuevoEstado = "en_revision";
-  }
 
   const { error } = await supabase
     .from("historial")
     .update({
-      estado: nuevoEstado,
+      estado,
       motivoNoRealizada: motivoNoRealizada || ""
     })
     .eq("id", empleado)
@@ -219,9 +216,9 @@ app.post("/guardar-estado", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ============================
-   OBS EMPLEADO
-============================ */
+// ============================
+//   EMPLEADO: OBS EMPLEADO
+// ============================
 app.post("/guardar-observacion", async (req, res) => {
   const { empleado, fecha, tarea, observacion } = req.body;
 
@@ -237,9 +234,9 @@ app.post("/guardar-observacion", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ============================
-   OBS ADMIN
-============================ */
+// ============================
+//   ADMIN: OBS ADMIN
+// ============================
 app.post("/guardar-observacion-admin", async (req, res) => {
   const { id, fecha, tarea, observacionAdmin } = req.body;
 
@@ -255,9 +252,9 @@ app.post("/guardar-observacion-admin", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ============================
-   ADMIN: REPROGRAMAR
-============================ */
+// ============================
+//   ADMIN: REPROGRAMAR
+// ============================
 app.post("/admin/reprogramar", async (req, res) => {
   const { id, fecha, tarea, nuevaFecha, observacionAdmin } = req.body;
 
@@ -286,7 +283,9 @@ app.post("/admin/reprogramar", async (req, res) => {
       estado: "pendiente",
       obsEmpleado: "",
       obsAdmin: "",
-      motivoNoRealizada: ""
+      motivoNoRealizada: "",
+      fotoAntes: "",
+      fotoDespues: ""
     }
   ]);
 
@@ -295,17 +294,40 @@ app.post("/admin/reprogramar", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ============================
-   HISTORIAL COMPLETO
-============================ */
+// ============================
+//   EMPLEADO: SUBIDA DIRECTA (URLS)
+// ============================
+app.post("/empleado/subida-directa", async (req, res) => {
+  const { empleadoId, fecha, tarea, fotoAntes, fotoDespues, obsEmpleado } = req.body;
+
+  const { error } = await supabase
+    .from("historial")
+    .update({
+      fotoAntes,
+      fotoDespues,
+      obsEmpleado,
+      estado: "terminada"
+    })
+    .eq("id", empleadoId)
+    .eq("fecha", fecha)
+    .eq("tarea", tarea);
+
+  if (error) return res.status(400).json(error);
+
+  res.json({ ok: true });
+});
+
+// ============================
+//   HISTORIAL COMPLETO
+// ============================
 app.get("/admin/historial", async (req, res) => {
   const { data, error } = await supabase.from("historial").select("*");
   if (error) return res.status(400).json(error);
   res.json(data);
 });
 
-/* ============================
-   PUERTO DINÁMICO (RENDER)
-============================ */
+// ============================
+//   PUERTO DINÁMICO (RENDER)
+// ============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Servidor corriendo en puerto " + PORT));
